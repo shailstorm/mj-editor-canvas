@@ -1,0 +1,79 @@
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/figma/dm-sans-regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/figma/dm-sans-medium.ttf') format('truetype');
+}
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #2e3038;
+  background: #fcfcfd;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 400;
+  font-size: 14px;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+button:disabled {
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #ff533e;
+  outline-offset: 4px;
+}
+input {
+  border: 0;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+}
+button,
+img {
+  -webkit-user-drag: none;
+}
+button {
+  touch-action: manipulation;
+}
+img {
+  user-select: none;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+::selection {
+  background: #ffddd7;
+}

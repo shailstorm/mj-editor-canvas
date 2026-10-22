@@ -1,0 +1,41 @@
+.tooltip-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 15;
+  width: max-content;
+  max-width: min(230px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 1px solid #e3e4e8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 6px #33333305;
+  color: #2e3038;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: left;
+  text-wrap: balance;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 8px;
+}
+
+.tooltip-trigger:hover > .tooltip,
+.tooltip-trigger:focus-within > .tooltip {
+  visibility: visible;
+  opacity: 1;
+}

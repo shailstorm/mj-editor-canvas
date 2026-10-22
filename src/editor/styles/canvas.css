@@ -1,0 +1,262 @@
+.workspace {
+  position: absolute;
+  inset: 0 0 0 82px;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .workspace {
+    inset: 0 0 calc(59px + env(safe-area-inset-bottom, 0px)) 0;
+  }
+}
+
+.canvas-texture {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, #6e6e6e1a, #6e6e6e1a), url('/figma/selection-Texture.png');
+  background-size:
+    auto,
+    486px 486px;
+  opacity: 0.3;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.canvas-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.source-image {
+  position: absolute;
+  object-fit: cover;
+  pointer-events: auto;
+}
+
+.source-image:focus-visible,
+.result-image:focus-visible {
+  outline: none;
+}
+
+.tool-cursor .source-image,
+.tool-cursor .result-image {
+  cursor: move;
+}
+
+.tool-lasso .result-image,
+.tool-rectangle .source-image,
+.tool-rectangle .result-image {
+  cursor: crosshair;
+}
+
+.tool-lasso .source-image,
+.tool-auto .source-image,
+.tool-expand .source-image {
+  cursor: crosshair;
+}
+
+.tool-hand {
+  cursor: grab;
+}
+
+.tool-hand:active {
+  cursor: grabbing;
+}
+
+.tool-hand .source-image {
+  cursor: inherit;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1.5px solid #64b4ff;
+  pointer-events: none;
+}
+
+.selection-box.is-movable {
+  pointer-events: auto;
+  cursor: move;
+}
+
+.selection-handle[data-resize-corner] {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.selection-handle[data-resize-corner]::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.selection-handle[data-resize-corner='nw'],
+.selection-handle[data-resize-corner='se'] {
+  cursor: nwse-resize;
+}
+
+.selection-handle[data-resize-corner='ne'],
+.selection-handle[data-resize-corner='sw'] {
+  cursor: nesw-resize;
+}
+
+.region-selection {
+  background: #60b5ff33;
+  border-color: transparent;
+}
+
+.selection-outline {
+  position: absolute;
+  left: -1.5px;
+  top: -1.5px;
+  width: calc(100% + 3px);
+  height: calc(100% + 3px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.region-mask {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.region-mask path,
+.selection-outline rect {
+  stroke: #54b1ff;
+  stroke-width: 1.5px;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+}
+
+.region-mask path {
+  fill: #60b5ff33;
+}
+
+.selection-outline rect {
+  fill: none;
+}
+
+.region-mask.is-drawing path {
+  fill: none;
+}
+
+.tool-auto .result-image {
+  cursor: crosshair;
+}
+
+.selection-handle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #64b4ff;
+  background: #fff;
+}
+
+.selection-handle.nw {
+  left: -3.5px;
+  top: -3.5px;
+}
+
+.selection-handle.ne {
+  right: -3.5px;
+  top: -3.5px;
+}
+
+.selection-handle.sw {
+  left: -3.5px;
+  bottom: -3.5px;
+}
+
+.selection-handle.se {
+  right: -3.5px;
+  bottom: -3.5px;
+}
+
+.result-selection .selection-handle {
+  width: 10px;
+  height: 10px;
+}
+
+.result-selection .nw {
+  left: -5px;
+  top: -5px;
+}
+
+.result-selection .ne {
+  right: -5px;
+  top: -5px;
+}
+
+.result-selection .sw {
+  left: -5px;
+  bottom: -5px;
+}
+
+.result-selection .se {
+  right: -5px;
+  bottom: -5px;
+}
+
+.result-image {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.result-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.marquee {
+  position: absolute;
+  border: 1px solid #64b4ff;
+  background: #64b4ff20;
+  pointer-events: none;
+}
+
+.image-operations.tool-group {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  height: 53.2px;
+  padding: 7px;
+  pointer-events: auto;
+  box-shadow: 0 0 10.5px #3333330d;
+}
+
+.image-operations .asset {
+  width: 18px;
+  height: 18px;
+}
+
+.result-selection,
+.individual-image-selection {
+  border-color: #54b1ff;
+}
+
+.result-selection .selection-handle {
+  border-width: 1.5px;
+  border-color: #54b1ff;
+}
+
+.result-image {
+  border-radius: 1.257px;
+  overflow: hidden;
+}
+
+.expanded-image-area {
+  position: absolute;
+  border: 1px solid #cbd0d9;
+  border-radius: 4px;
+  pointer-events: none;
+}

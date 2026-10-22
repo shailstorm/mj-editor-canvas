@@ -1,0 +1,56 @@
+.viewport {
+  width: 100%;
+  height: 100svh;
+  overflow: hidden;
+  background: #fcfcfd;
+}
+
+.editor-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fcfcfd;
+}
+
+.asset {
+  display: block;
+  max-width: none;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.floating {
+  background: #fff;
+  border: 0.6px solid #e3e4e8;
+  box-shadow: 0 7px 10px #3333330d;
+}
+
+.icon-button {
+  flex-shrink: 0;
+}
+
+.toast {
+  position: absolute;
+  bottom: 91px;
+  left: calc(50% + 41px);
+  transform: translateX(-50%);
+  border: 1px solid #e3e4e8;
+  box-shadow: 0 5px 25px #3331;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: #fff;
+  z-index: 30;
+  font-size: 14px;
+  white-space: nowrap;
+  max-width: 90%;
+}
+
+@media (max-width: 600px) {
+  .toast {
+    left: 50%;
+    bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    white-space: normal;
+  }
+}
+

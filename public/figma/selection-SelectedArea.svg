@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="232" height="142" viewBox="0 0 232 142" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="selected-area">
+<path id="Rectangle 1" d="M4.5 4.5H228.5V137.5H4.5V4.5Z" fill="#6CBAF6" fill-opacity="0.32" stroke="#54B1FF"/>
+<path id="Rectangle 2" d="M224.5 1.5H231.5V8.5H224.5V1.5Z" fill="white" stroke="#54B1FF"/>
+<path id="Rectangle 3" d="M224.5 134.5H231.5V141.5H224.5V134.5Z" fill="white" stroke="#54B1FF"/>
+<path id="Rectangle 4" d="M0.5 134.5H7.5V141.5H0.5V134.5Z" fill="white" stroke="#54B1FF"/>
+<path id="Rectangle 5" d="M0.5 0.5H7.5V7.5H0.5V0.5Z" fill="white" stroke="#54B1FF"/>
+</g>
+</svg>
