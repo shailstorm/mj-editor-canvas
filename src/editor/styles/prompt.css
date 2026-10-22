@@ -16,14 +16,14 @@
   align-items: center;
 }
 
-.prompt-row > .tooltip-trigger > .icon-button {
+.prompt-row > .icon-button {
   width: 34px;
   height: 34px;
   border-radius: 6px;
   margin-right: 6px;
 }
 
-.prompt-row > .tooltip-trigger > .icon-button:hover {
+.prompt-row > .icon-button:hover {
   background: #f1f2f4;
 }
 

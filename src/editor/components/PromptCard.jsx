@@ -4,7 +4,6 @@ import { IconButton } from './Icon.jsx'
 import ReferenceImages from './ReferenceImages.jsx'
 import SendIcon from './SendIcon.jsx'
 import { selectedRegion } from '../model/selection.js'
-import Tooltip, { REFERENCE_TOOLTIP } from './Tooltip.jsx'
 
 export default function PromptCard({
   document,
@@ -51,9 +50,7 @@ export default function PromptCard({
       onSubmit={submit}
     >
       <div className="prompt-row">
-        <Tooltip text={REFERENCE_TOOLTIP}>
-          <IconButton label="Add reference image" name="AddImageUncentered" title={undefined} onClick={addReference} />
-        </Tooltip>
+        <IconButton label="Add reference image" name="AddImageUncentered" title={undefined} onClick={addReference} />
         <input
           ref={inputRef}
           aria-label="Describe your edit"
