@@ -1,0 +1,45 @@
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -12,10 +12,17 @@
+ const nextConfig = {
+   // Configure `pageExtensions` to include markdown and MDX files
+   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
+-  // Midjourney editor canvas: standalone page, without the portfolio layout.
++  // Serve the independently deployed editor and its assets under shay.city.
+   async rewrites() {
+     return [
+-      { source: '/work/midjourney/editor-canvas', destination: '/work/midjourney/editor-canvas/index.html' },
++      {
++        source: '/editor-canvas',
++        destination: 'https://mj-editor-canvas.vercel.app/editor-canvas',
++      },
++      {
++        source: '/editor-canvas/:path*',
++        destination: 'https://mj-editor-canvas.vercel.app/editor-canvas/:path*',
++      },
+     ]
+   },
+   // Optionally, add any other Next.js config below
+--- a/package.json
++++ b/package.json
+@@ -6,9 +6,7 @@
+     "dev": "next dev",
+     "build": "next build",
+     "start": "next start",
+-    "lint": "next lint",
+-    "build:editor-canvas": "npm --prefix apps/midjourney-editor-canvas ci --include=dev && npm --prefix apps/midjourney-editor-canvas run build:shaysite",
+-    "prebuild": "npm run build:editor-canvas"
++    "lint": "next lint"
+   },
+   "dependencies": {
+     "@base-ui-components/react": "1.0.0-beta.2",
+--- a/.gitignore
++++ b/.gitignore
+@@ -47,5 +47,6 @@
+ /src/data/books.json
+ .gstack/
+ 
+-# Built from apps/midjourney-editor-canvas during deployment
++# Local snapshot from the former embedded editor setup (production uses its own repository)
+ /public/work/midjourney/editor-canvas/
++/apps/midjourney-editor-canvas/

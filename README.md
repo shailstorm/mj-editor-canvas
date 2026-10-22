@@ -15,17 +15,40 @@ Navigation icons are muted, static placeholders on desktop and mobile. Help open
 
 ## Publish on shay.city
 
-The editor can build inside the existing `shailstorm/shaysite` Next.js repository. From this development folder, run:
+Publish this editor in its own GitHub repository and connect it to a separate Vercel project. `vercel.json` configures the Vite build, output directory, and routes for `/editor-canvas`. The editor's source stays independent of `shailstorm/shaysite`.
+
+To verify the production build locally:
 
 ```sh
-npm run sync:shaysite -- /Users/shay/dev/shaysite
+npm run build:production
 ```
 
-This copies the current source, tests, and assets to `apps/midjourney-editor-canvas` in shaysite. It adds a build hook and a rewrite for `/work/midjourney/editor-canvas`, serving the standalone editor without the portfolio header, footer, or styles. Generated editor files are built into `public/work/midjourney/editor-canvas` and ignored by Git. No environment files, installed dependencies, or credentials are copied.
+The editor's Vercel production domain is `mj-editor-canvas.vercel.app`. Add these rewrites to the existing Next.js configuration in shaysite. This stable domain continues to point at the editor's latest production deployment.
 
-In shaysite, run `npm run build` to verify the combined build, then review, commit, and push the changes to the Vercel production branch. Set Vercel's Build Command to `npm run build` so the editor build hook runs. This setup uses the website's existing Vercel project; it does not require a second project or a new domain.
+```js
+async rewrites() {
+  return [
+    {
+      source: '/editor-canvas',
+      destination: 'https://mj-editor-canvas.vercel.app/editor-canvas',
+    },
+    {
+      source: '/editor-canvas/:path*',
+      destination: 'https://mj-editor-canvas.vercel.app/editor-canvas/:path*',
+    },
+  ]
+},
+```
 
-For subsequent edits, either work directly in shaysite's `apps/midjourney-editor-canvas` folder, or edit this development copy and run the sync command again before committing and pushing shaysite. Sync updates the embedded source from this folder, so keep one copy as your source of truth. Local file saves alone do not deploy; a push to the connected production branch triggers Vercel.
+`deployment/shaysite.patch` contains the routing change for the current local shaysite checkout. It also removes the former embedded build hook and ignores the preserved local editor snapshot. Apply it with:
+
+```sh
+git -C /Users/shay/dev/shaysite apply /Users/shay/dev/mj/editor-redesign-canvas/deployment/shaysite.patch
+```
+
+Commit and push this editor's deployment configuration first, then deploy the shaysite configuration change. Visitors can then use `https://shay.city/editor-canvas` while the editor loads as a standalone page. The current apex-to-www redirect on shay.city still applies.
+
+Subsequent commits pushed to the editor repository's Vercel production branch (typically `main`) automatically update the editor at this URL. Shaysite does not need to be redeployed for those updates. Local file saves alone do not deploy. Production must be publicly accessible so shaysite can proxy it.
 
 ## Try the flow
 
