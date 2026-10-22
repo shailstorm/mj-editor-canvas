@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { IMAGE_SIZE } from '../model/layout.js'
 import {
   canvasImages,
@@ -25,8 +25,14 @@ export function useCanvasGestures({
 }) {
   const boardRef = useRef(null)
   const drag = useRef(null)
+  const touches = useRef(new Map())
+  const viewRef = useRef(view)
   const [marquee, setMarquee] = useState(null)
   const [isSelectingRegion, setIsSelectingRegion] = useState(false)
+
+  useLayoutEffect(() => {
+    viewRef.current = view
+  }, [view])
 
   useEffect(() => {
     const board = boardRef.current
@@ -54,8 +60,55 @@ export function useCanvasGestures({
       { x: event.clientX, y: event.clientY },
       boardRef.current.getBoundingClientRect(),
       stage,
-      view,
+      viewRef.current,
     )
+  }
+
+  function setGestureView(next) {
+    viewRef.current = next
+    setView(next)
+  }
+
+  function touchPair() {
+    const [first, second] = [...touches.current.values()]
+    return {
+      center: { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 },
+      distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
+    }
+  }
+
+  function startPinch() {
+    // A second finger turns the pending drag into a viewport gesture, never a document edit.
+    if (drag.current?.before) history.preview(drag.current.before)
+    setMarquee(null)
+    setIsSelectingRegion(false)
+    const { center, distance } = touchPair()
+    drag.current = {
+      kind: 'pinch',
+      distance,
+      zoom: viewRef.current.zoom,
+      anchor: worldPoint(center, boardRef.current.getBoundingClientRect(), stage, viewRef.current),
+    }
+  }
+
+  function pinch(active) {
+    const { center, distance } = touchPair()
+    const zoom = clamp(active.zoom * distance / active.distance, 0.25, 3)
+    const rect = boardRef.current.getBoundingClientRect()
+    setGestureView({
+      zoom,
+      x: center.x - rect.left - stage.offset.x - active.anchor.x * zoom,
+      y: center.y - rect.top - stage.offset.y - active.anchor.y * zoom,
+    })
+  }
+
+  function finishTouch(event) {
+    if (!event || !touches.current.delete(event.pointerId)) return false
+    if (drag.current?.kind !== 'pinch') return false
+    if (touches.current.size >= 2) startPinch()
+    else drag.current = null
+    // Leave the remaining finger idle until it lifts or joins another pinch.
+    return true
   }
 
   function startSelection(event, point, imageId) {
@@ -115,15 +168,23 @@ export function useCanvasGestures({
   function onPointerDown(event) {
     if (event.target.closest('button,input,form,.image-operations')) return
     if (event.button !== 0 && event.button !== 1) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    if (event.pointerType === 'touch') {
+      touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+      if (touches.current.size > 1) {
+        event.preventDefault()
+        if (touches.current.size === 2 && (tool === 'cursor' || tool === 'hand')) startPinch()
+        return
+      }
+    }
     const point = toWorld(event)
     const imageId = event.target.closest('[data-image]')?.dataset.image
     const handle = event.target.closest('[data-resize-corner]')
     const regionMove = event.target.closest('[data-region-move]')
-    event.currentTarget.setPointerCapture(event.pointerId)
 
     if (tool === 'hand' || spaceHeld || event.button === 1) {
       event.preventDefault()
-      drag.current = { kind: 'pan', point, startView: view }
+      drag.current = { kind: 'pan', point, startView: viewRef.current }
     } else if (handle) {
       startTransform(
         point,
@@ -142,6 +203,7 @@ export function useCanvasGestures({
       history.preview({ selected: [document.imageId] })
       startRegionSelection(point)
     }
+    if (drag.current) drag.current.pointerId = event.pointerId
   }
 
   function startTransform(point, kind, corner) {
@@ -176,7 +238,7 @@ export function useCanvasGestures({
     const rect = boardRef.current.getBoundingClientRect()
     const x = event.clientX - rect.left - stage.offset.x
     const y = event.clientY - rect.top - stage.offset.y
-    setView({
+    setGestureView({
       ...active.startView,
       x: x - active.point.x * active.startView.zoom,
       y: y - active.point.y * active.startView.zoom,
@@ -184,8 +246,19 @@ export function useCanvasGestures({
   }
 
   function onPointerMove(event) {
+    if (touches.current.has(event.pointerId)) {
+      touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    }
     const active = drag.current
     if (!active) return
+    if (active.kind === 'pinch') {
+      if (touches.current.has(event.pointerId)) {
+        event.preventDefault()
+        pinch(active)
+      }
+      return
+    }
+    if (event.pointerId !== active.pointerId) return
     const point = toWorld(event)
     switch (active.kind) {
       case 'pan':
@@ -260,8 +333,10 @@ export function useCanvasGestures({
   }
 
   function onPointerUp(event) {
+    if (finishTouch(event)) return
     const active = drag.current
     if (!active) return
+    if (event && event.pointerId !== active.pointerId) return
     if (active.kind === 'region') {
       if (event) addRegionPoint(active, toWorld(event))
       const region = regionForGesture(active, true)
@@ -280,11 +355,18 @@ export function useCanvasGestures({
     setMarquee(null)
   }
 
-  function onPointerCancel() {
+  function onPointerCancel(event) {
+    if (finishTouch(event)) return
+    if (event && event.pointerId !== drag.current?.pointerId) return
+    if (!event) touches.current.clear()
     if (drag.current?.before) history.preview(drag.current.before)
     drag.current = null
     setIsSelectingRegion(false)
     setMarquee(null)
+  }
+
+  function onLostPointerCapture(event) {
+    if (event.target === event.currentTarget) onPointerCancel(event)
   }
 
   function onDoubleClick(event) {
@@ -303,6 +385,9 @@ export function useCanvasGestures({
     marquee,
     isSelectingRegion,
     clearMarquee: onPointerCancel,
-    pointerHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onDoubleClick },
+    pointerHandlers: {
+      onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
+      onLostPointerCapture, onDoubleClick,
+    },
   }
 }

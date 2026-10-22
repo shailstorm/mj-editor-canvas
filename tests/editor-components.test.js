@@ -8,6 +8,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { initialDocument } from '../src/editor/model/document.js'
 import { DEFAULT_VIEW, stageLayout, regionBounds } from '../src/editor/model/layout.js'
+import { worldPoint } from '../src/editor/model/geometry.js'
 
 let PromptCard, ReferenceImages, EditorCanvas, ProjectsDialog, useCanvasGestures, useEditor
 let SourceImage, ResultImages, Navigation, HelpDialog, Topbar
@@ -91,11 +92,13 @@ test('double-click crop resolves the clicked photo after pointer capture retarge
   assert.deepEqual(cropped, [document.imageId, document.results[0].id])
 })
 
-function selectionGesture(document, view = DEFAULT_VIEW, tool = 'cursor', actions = {}) {
+function selectionGesture(document, view = DEFAULT_VIEW, tool = 'cursor', actions = {}, viewport = { width: 1600, height: 1043 }) {
   let current = document
+  let currentView = view
   const commits = []
   let gestures
-  const stage = stageLayout({ width: 1600, height: 1043 })
+  const stage = stageLayout(viewport)
+  const boardLeft = viewport.width <= 600 ? 0 : 82
   function Capture() {
     // Expose the server-rendered hook's handlers to the test; this is not a mounted UI.
     // eslint-disable-next-line react/globals
@@ -114,25 +117,28 @@ function selectionGesture(document, view = DEFAULT_VIEW, tool = 'cursor', action
       spaceHeld: false,
       stage,
       view,
-      setView() {},
+      setView(next) {
+        currentView = typeof next === 'function' ? next(currentView) : next
+      },
       closePanel() {},
     })
     return null
   }
   renderToStaticMarkup(createElement(Capture))
   const board = {
-    getBoundingClientRect: () => ({ left: 82, top: 0 }),
+    getBoundingClientRect: () => ({ left: boardLeft, top: 0 }),
     setPointerCapture() {},
   }
   gestures.boardRef.current = board
   function event(x, y, imageId, shiftKey = false, transformTarget) {
     return {
-      clientX: 82 + stage.offset.x + view.x + x * view.zoom,
-      clientY: stage.offset.y + view.y + y * view.zoom,
+      clientX: boardLeft + stage.offset.x + currentView.x + x * currentView.zoom,
+      clientY: stage.offset.y + currentView.y + y * currentView.zoom,
       button: 0,
       pointerId: 1,
       shiftKey,
       currentTarget: board,
+      preventDefault() {},
       target: {
         closest(selector) {
           if (selector === '[data-image]' && imageId) return { dataset: { image: imageId } }
@@ -150,8 +156,156 @@ function selectionGesture(document, view = DEFAULT_VIEW, tool = 'cursor', action
       },
     }
   }
-  return { gestures, event, commits, document: () => current }
+  function touch(pointerId, clientX, clientY, imageId) {
+    return { ...event(0, 0, imageId), pointerId, pointerType: 'touch', clientX, clientY }
+  }
+  return { gestures, event, touch, commits, stage, board, document: () => current, view: () => currentView }
 }
+
+test('Select and Hand pinch in and out around the fingers on mobile, including two-finger panning', () => {
+  for (const tool of ['cursor', 'hand']) {
+    const document = outputDocument()
+    const initialView = { zoom: .75, x: 30, y: -20 }
+    const session = selectionGesture(document, initialView, tool, {}, { width: 390, height: 844 })
+    const handlers = session.gestures.pointerHandlers
+    const anchor = worldPoint({ x: 150, y: 200 }, session.board.getBoundingClientRect(), session.stage, initialView)
+    handlers.onPointerDown(session.touch(1, 100, 200, document.imageId))
+    handlers.onPointerDown(session.touch(2, 200, 200, document.imageId))
+    function move(first, second, zoom) {
+      handlers.onPointerMove(session.touch(1, ...first))
+      handlers.onPointerMove(session.touch(2, ...second))
+      assert.equal(session.view().zoom, zoom)
+      const center = { x: (first[0] + second[0]) / 2, y: (first[1] + second[1]) / 2 }
+      const actual = worldPoint(center, session.board.getBoundingClientRect(), session.stage, session.view())
+      assert.ok(Math.abs(actual.x - anchor.x) < 1e-9)
+      assert.ok(Math.abs(actual.y - anchor.y) < 1e-9)
+    }
+    move([50, 200], [250, 200], 1.5)
+    move([80, 240], [280, 240], 1.5)
+    move([155, 240], [205, 240], .375)
+    handlers.onPointerUp(session.touch(2, 205, 240))
+    handlers.onPointerUp(session.touch(1, 155, 240))
+    assert.deepEqual(session.document(), document)
+    assert.equal(session.commits.length, 0)
+  }
+})
+
+test('starting a pinch rolls back a pending photo drag and ignores the remaining finger after release', () => {
+  const document = outputDocument()
+  const session = selectionGesture(document)
+  const handlers = session.gestures.pointerHandlers
+  handlers.onPointerDown(session.touch(1, 400, 200, document.imageId))
+  handlers.onPointerMove(session.touch(1, 440, 220))
+  assert.notDeepEqual(session.document().imageFrame, document.imageFrame)
+  handlers.onPointerDown(session.touch(2, 540, 220))
+  assert.deepEqual(session.document(), document)
+  handlers.onPointerMove(session.touch(2, 640, 220))
+  const finalView = session.view()
+  handlers.onPointerUp(session.touch(2, 640, 220))
+  handlers.onPointerMove(session.touch(1, 300, 300))
+  handlers.onPointerUp(session.touch(1, 300, 300))
+  assert.deepEqual(session.view(), finalView)
+  assert.deepEqual(session.document(), document)
+  assert.equal(session.commits.length, 0)
+})
+
+test('touch zoom respects the existing limits and supports a third finger, capture loss, and a new gesture', () => {
+  const session = selectionGesture(outputDocument(), DEFAULT_VIEW, 'hand')
+  const handlers = session.gestures.pointerHandlers
+  handlers.onPointerDown(session.touch(1, 100, 200))
+  handlers.onPointerDown(session.touch(2, 200, 200))
+  handlers.onPointerMove(session.touch(1, 149, 200))
+  handlers.onPointerMove(session.touch(2, 151, 200))
+  assert.equal(session.view().zoom, .25)
+  handlers.onPointerMove(session.touch(1, -850, 200))
+  handlers.onPointerMove(session.touch(2, 1150, 200))
+  assert.equal(session.view().zoom, 3)
+  const beforeThird = session.view()
+  handlers.onPointerDown(session.touch(3, 150, 300))
+  handlers.onPointerUp(session.touch(1, -850, 200))
+  assert.deepEqual(session.view(), beforeThird)
+  handlers.onPointerMove(session.touch(2, 650, 250))
+  assert.equal(session.view().zoom, 1.5)
+  handlers.onLostPointerCapture({ ...session.touch(2, 650, 250), target: session.board })
+  const cancelledView = session.view()
+  handlers.onPointerMove(session.touch(3, 300, 300))
+  handlers.onPointerUp(session.touch(3, 300, 300))
+  assert.deepEqual(session.view(), cancelledView)
+  handlers.onPointerDown(session.touch(4, 100, 200))
+  handlers.onPointerDown(session.touch(5, 200, 200))
+  handlers.onPointerMove(session.touch(4, 125, 200))
+  handlers.onPointerMove(session.touch(5, 175, 200))
+  assert.equal(session.view().zoom, .75)
+  handlers.onPointerCancel()
+  assert.equal(session.commits.length, 0)
+})
+
+test('one-finger Hand panning and Select image movement retain their behavior and undo handling', () => {
+  for (const tool of ['cursor', 'hand']) {
+    const document = outputDocument()
+    const session = selectionGesture(document, { zoom: 2, x: 30, y: -20 }, tool)
+    const handlers = session.gestures.pointerHandlers
+    handlers.onPointerDown(session.touch(1, 400, 200, document.imageId))
+    handlers.onPointerMove(session.touch(1, 440, 220))
+    handlers.onPointerUp(session.touch(1, 440, 220))
+    if (tool === 'hand') {
+      assert.deepEqual(session.view(), { zoom: 2, x: 70, y: 0 })
+      assert.deepEqual(session.document(), document)
+      assert.equal(session.commits.length, 0)
+    } else {
+      assert.deepEqual(session.view(), { zoom: 2, x: 30, y: -20 })
+      assert.equal(session.document().imageFrame.x, document.imageFrame.x + 20)
+      assert.equal(session.document().imageFrame.y, document.imageFrame.y + 10)
+      assert.equal(session.commits.length, 1)
+    }
+  }
+})
+
+test('prompt controls are excluded from pinches and child capture changes cannot cancel a canvas drag', () => {
+  const document = outputDocument()
+  const session = selectionGesture(document)
+  const handlers = session.gestures.pointerHandlers
+  const control = {
+    ...session.touch(2, 400, 200),
+    target: { closest: (selector) => selector === 'button,input,form,.image-operations' ? {} : null },
+  }
+  handlers.onPointerDown(control)
+  handlers.onPointerDown(session.touch(1, 400, 200, document.imageId))
+  handlers.onLostPointerCapture(session.touch(1, 400, 200, document.imageId))
+  handlers.onPointerMove(session.touch(1, 440, 220))
+  handlers.onPointerUp(session.touch(1, 440, 220))
+  assert.equal(session.document().imageFrame.x, document.imageFrame.x + 40)
+  assert.equal(session.commits.length, 1)
+  assert.deepEqual(session.view(), DEFAULT_VIEW)
+})
+
+test('a second touch cannot zoom or interrupt rectangle selection or trigger another tool action', () => {
+  for (const tool of ['rectangle', 'lasso', 'auto', 'expand']) {
+    const document = regionDocument()
+    const triggered = []
+    const session = selectionGesture(document, DEFAULT_VIEW, tool, {
+      autoSelect: () => triggered.push('auto'),
+      expand: () => triggered.push('expand'),
+    })
+    const handlers = session.gestures.pointerHandlers
+    const primary = { ...session.event(400, 200, document.imageId), pointerType: 'touch' }
+    handlers.onPointerDown(primary)
+    handlers.onPointerDown({ ...session.event(500, 300, document.imageId), pointerType: 'touch', pointerId: 2 })
+    handlers.onPointerMove({ ...session.event(600, 400), pointerType: 'touch', pointerId: 2 })
+    handlers.onPointerUp({ ...session.event(600, 400), pointerType: 'touch', pointerId: 2 })
+    assert.equal(session.commits.length, 0)
+    handlers.onPointerMove({ ...session.event(600, 200), pointerType: 'touch' })
+    handlers.onPointerMove({ ...session.event(600, 400), pointerType: 'touch' })
+    handlers.onPointerMove({ ...session.event(400, 400), pointerType: 'touch' })
+    handlers.onPointerUp({ ...session.event(600, 400), pointerType: 'touch' })
+    assert.deepEqual(session.view(), DEFAULT_VIEW)
+    if (tool === 'rectangle' || tool === 'lasso') {
+      assert.equal(session.commits.length, 1)
+      assert.equal(session.document().region.width, 200)
+      assert.equal(session.document().region.height, 200)
+    } else assert.deepEqual(triggered, [tool])
+  }
+})
 
 test('startup ignores legacy example URLs and renders no selection or editing controls', () => {
   const previousLocation = globalThis.location
