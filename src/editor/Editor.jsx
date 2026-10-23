@@ -54,8 +54,10 @@ export default function Editor() {
     closePanels,
     clearMarquee: gestures.clearMarquee,
     showSuggestions: () => {
+      if (!document.selected.length) return
+      actions.editSelected()
+      if (!document.prompt.trim()) actions.applySuggestion()
       promptRef.current?.focus()
-      setPanel('suggestions')
     },
   })
 
@@ -111,9 +113,8 @@ export default function Editor() {
               busy={editor.busy}
               isSelectingRegion={gestures.isSelectingRegion}
               promptOpen={editor.promptOpen}
-              suggestionsOpen={panel === 'suggestions'}
+              completion={editor.promptCompletion}
               actions={actions}
-              closeSuggestions={closePanels}
               openReferencePicker={openReferencePicker}
             />
           )}

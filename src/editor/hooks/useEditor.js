@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDocumentHistory } from './useDocumentHistory.js'
 import { useGeneration } from './useGeneration.js'
 import {
@@ -24,11 +24,20 @@ export function useEditor({ resetView, notify }) {
   const [tool, setTool] = useState('cursor')
   const [panel, setPanel] = useState(null)
   const [promptOpen, setPromptOpen] = useState(false)
+  const [promptCompletion, setPromptCompletion] = useState(null)
+  const completionRequest = useRef(0)
   const [boundsEditor, setBoundsEditor] = useState(null)
   const [boundsBusy, setBoundsBusy] = useState(false)
   const boundsRequest = useRef(0)
   const referenceWeightEdit = useRef(null)
   const generation = useGeneration(notify)
+
+  useEffect(() => {
+    if (!promptCompletion) return
+    // Also clear a reveal if the prompt is hidden before its animation ends.
+    const timeout = setTimeout(() => setPromptCompletion(null), 1500)
+    return () => clearTimeout(timeout)
+  }, [promptCompletion])
 
   function cancelBounds(nextTool = 'cursor') {
     boundsRequest.current += 1
@@ -143,13 +152,15 @@ export function useEditor({ resetView, notify }) {
 
   function applySuggestion() {
     update({ prompt: SAMPLE_PROMPT })
+    setPromptCompletion({ id: ++completionRequest.current, text: SAMPLE_PROMPT })
+    setPromptOpen(true)
     setPanel(null)
   }
 
   function setPrompt(prompt) {
+    if (prompt.trim() === '/') return applySuggestion()
+    setPromptCompletion(null)
     preview({ prompt })
-    if (prompt === '/') setPanel('suggestions')
-    else if (panel === 'suggestions') setPanel(null)
   }
 
   async function generate() {
@@ -157,7 +168,7 @@ export function useEditor({ resetView, notify }) {
     const selected = selectedImages(document)
     if (!selected.length) return
     if (!document.prompt.trim() || document.prompt === '/') {
-      setPanel('suggestions')
+      applySuggestion()
       return
     }
     setPanel(null)
@@ -261,6 +272,7 @@ export function useEditor({ resetView, notify }) {
     setPanel,
     busy: generation.busy,
     promptOpen,
+    promptCompletion,
     boundsEditor,
     boundsBusy,
     actions: {
@@ -274,6 +286,7 @@ export function useEditor({ resetView, notify }) {
       applyBounds,
       cancelBounds: () => cancelBounds(),
       applySuggestion,
+      finishPromptCompletion: () => setPromptCompletion(null),
       setPrompt,
       generate,
       upload,

@@ -1,4 +1,3 @@
-import { SAMPLE_PROMPT } from '../model/assets.js'
 import { promptStyle } from '../model/layout.js'
 import { IconButton } from './Icon.jsx'
 import ReferenceImages from './ReferenceImages.jsx'
@@ -13,29 +12,31 @@ export default function PromptCard({
   busy,
   isSelectingRegion = false,
   promptOpen = false,
-  suggestionsOpen,
+  completion,
   actions,
-  closeSuggestions,
   openReferencePicker,
 }) {
   if (isSelectingRegion || !document.selected.length || (!selectedRegion(document) && !promptOpen))
     return null
   const expanded = document.references.length > 0
+  const revealing = completion?.text === document.prompt
+  const letters = revealing ? Array.from(completion.text) : []
+
+  function finishCompletion() {
+    if (revealing) actions.finishPromptCompletion()
+  }
 
   function submit(event) {
     event.preventDefault()
+    finishCompletion()
     actions.generate()
-  }
-
-  function applySuggestion() {
-    actions.applySuggestion()
     inputRef.current?.focus()
   }
 
   function keydown(event) {
+    finishCompletion()
     if (event.key !== 'Escape') return
     event.stopPropagation()
-    closeSuggestions()
     event.currentTarget.blur()
   }
 
@@ -51,14 +52,32 @@ export default function PromptCard({
     >
       <div className="prompt-row">
         <IconButton label="Add reference image" name="AddImageUncentered" title={undefined} onClick={addReference} />
-        <input
-          ref={inputRef}
-          aria-label="Describe your edit"
-          placeholder="Type “/” for suggestions"
-          value={document.prompt}
-          onChange={(event) => actions.setPrompt(event.target.value)}
-          onKeyDown={keydown}
-        />
+        <div className={`prompt-input ${revealing ? 'is-completing' : ''}`}>
+          <input
+            ref={inputRef}
+            aria-label="Describe your edit"
+            placeholder="Type “/” for suggestions"
+            value={document.prompt}
+            onChange={(event) => actions.setPrompt(event.target.value)}
+            onKeyDown={keydown}
+            onPointerDown={finishCompletion}
+            onBlur={finishCompletion}
+          />
+          {revealing && (
+            <span className="prompt-completion" aria-hidden="true" key={completion.id}>
+              {letters.map((letter, index) => (
+                <span
+                  className="prompt-completion-letter"
+                  key={index}
+                  style={{ '--letter-index': index }}
+                  onAnimationEnd={index === letters.length - 1 ? finishCompletion : undefined}
+                >
+                  {letter}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
         <button
           className="send-button"
           aria-label={busy ? 'Generating preview' : 'Generate variations'}
@@ -78,15 +97,6 @@ export default function PromptCard({
           onWeightStart={actions.beginReferenceWeight}
           onWeightEnd={actions.finishReferenceWeight}
         />
-      )}
-      {suggestionsOpen && (
-        <div className="suggestions floating">
-          <p>Try a region edit</p>
-          <button type="button" onClick={applySuggestion}>
-            {SAMPLE_PROMPT}
-            <span>Use this prompt ↵</span>
-          </button>
-        </div>
       )}
     </form>
   )
