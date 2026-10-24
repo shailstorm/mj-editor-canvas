@@ -131,6 +131,8 @@
   }
 
   .toolbar {
+    /* Match mobile navigation's viewport anchor: Arc iOS can oversize 100svh. */
+    position: fixed;
     left: 50%;
     bottom: calc(77.3px + env(safe-area-inset-bottom, 0px));
     max-width: calc(100% - 24px);
