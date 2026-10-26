@@ -12,6 +12,7 @@ import { worldPoint } from '../src/editor/model/geometry.js'
 
 let PromptCard, ReferenceImages, EditorCanvas, ProjectsDialog, useCanvasGestures, useEditor
 let SourceImage, ResultImages, Navigation, HelpDialog, Topbar
+let PromptPanel, PromptReferences, Editor
 before(async () => {
   const outDir = 'node_modules/.cache/editor-component-tests'
   await build({
@@ -20,6 +21,9 @@ before(async () => {
   })
   const components = await import(pathToFileURL(resolve(outDir, 'editor-components.js')))
   PromptCard = components.PromptCard
+  PromptPanel = components.PromptPanel
+  PromptReferences = components.PromptReferences
+  Editor = components.Editor
   ReferenceImages = components.ReferenceImages
   EditorCanvas = components.EditorCanvas
   ProjectsDialog = components.ProjectsDialog
@@ -1026,4 +1030,61 @@ test('each reference photo exposes its own accessible weight slider and drag cal
   assert.deepEqual(starts, [1])
   assert.deepEqual(changes, [[1, 65]])
   assert.deepEqual(ends, ['end'])
+})
+
+test('the editor mounts the side panel only above the medium-screen breakpoint', () => {
+  const { innerWidth, innerHeight } = globalThis
+  try {
+    for (const width of [390, 600, 768, 1024, 1200, 1201, 1440]) {
+      globalThis.innerWidth = width
+      globalThis.innerHeight = 900
+      const html = renderToStaticMarkup(createElement(Editor))
+      assert.equal(html.includes('aria-label="Image prompt panel"'), width > 1200)
+      assert.equal(html.includes('aria-label="Aura"'), width > 1200)
+    }
+  } finally {
+    if (innerWidth === undefined) delete globalThis.innerWidth
+    else globalThis.innerWidth = innerWidth
+    if (innerHeight === undefined) delete globalThis.innerHeight
+    else globalThis.innerHeight = innerHeight
+  }
+})
+
+test('desktop generation requires a prompt and a selected image, and stays disabled during gestures or generation', () => {
+  const base = { ...initialDocument(), prompt: 'Add flowers', selected: ['source-original'] }
+  const cases = [
+    [{ ...base, selected: [] }, {}, false],
+    [{ ...base, prompt: ' ' }, {}, false],
+    [{ ...base, prompt: '/' }, {}, false],
+    [base, { busy: true }, false],
+    [base, { isSelectingRegion: true }, false],
+    [base, {}, true],
+    [{ ...base, image: null, selected: ['result'], results: [{ id: 'result', src: '/result.png' }] }, {}, true],
+  ]
+  for (const [document, overrides, allowed] of cases) {
+    let generated = 0, completed = 0
+    const panel = PromptPanel(promptProps(document, {
+      actions: { generate() { generated++ }, finishPromptCompletion() { completed++ } },
+      ...overrides,
+    }))
+    const button = find(panel, (element) => element.props.className === 'prompt-panel-primary')
+    assert.equal(button.props.disabled, !allowed)
+    panel.props.onSubmit({ preventDefault() {} })
+    assert.equal(generated, Number(allowed))
+    assert.equal(completed, Number(allowed))
+  }
+})
+
+test('the side panel switches image and region prompts without losing the shared draft or references', () => {
+  const base = { ...regionDocument(), prompt: 'Add flowers', references: ['/flower.png'], referenceWeights: [75] }
+  for (const region of [null, base.region]) {
+    const html = renderToStaticMarkup(createElement(PromptPanel, promptProps({ ...base, region })))
+    assert.match(html, region ? /Region Prompt/ : /Image Prompt/)
+    assert.equal(html.includes('aria-label="Aura"'), !region)
+    assert.match(html, /value="Add flowers"/)
+    assert.match(html, /aria-label="Reference 1 weight" aria-valuetext="75% influence"/)
+    assert.doesNotMatch(html, /prompt-output/)
+  }
+  const references = PromptReferences({ references: Array(6).fill('/flower.png') })
+  assert.equal(find(references, (element) => element.props['aria-label'] === 'Upload reference').props.disabled, true)
 })

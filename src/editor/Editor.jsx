@@ -8,6 +8,7 @@ import { fitCanvasView } from './model/layout.js'
 import Navigation from './components/Navigation.jsx'
 import EditorCanvas from './components/EditorCanvas.jsx'
 import PromptCard from './components/PromptCard.jsx'
+import PromptPanel from './components/PromptPanel.jsx'
 import Topbar from './components/Topbar.jsx'
 import Toolbar from './components/Toolbar.jsx'
 import ProjectsDialog from './components/ProjectsDialog.jsx'
@@ -22,6 +23,7 @@ export default function Editor() {
   const editor = useEditor({ resetView: canvas.resetView, notify: toast.notify })
   const { document, history, actions, tool, panel, setPanel } = editor
   const { stage, view, setView, resetView } = canvas
+  const usePromptBox = stage.width <= 1200
   const [spaceHeld, setSpaceHeld] = useState(false)
   const promptRef = useRef(null)
   const uploadRef = useRef(null)
@@ -31,7 +33,7 @@ export default function Editor() {
 
   useEffect(() => {
     if (editor.promptOpen) promptRef.current?.focus()
-  }, [editor.promptOpen])
+  }, [editor.promptOpen, usePromptBox])
 
   const gestures = useCanvasGestures({
     document,
@@ -104,7 +106,7 @@ export default function Editor() {
               onApply={actions.applyBounds}
               onCancel={actions.cancelBounds}
             />
-          ) : (
+          ) : usePromptBox ? (
             <PromptCard
               document={document}
               stage={stage}
@@ -117,8 +119,20 @@ export default function Editor() {
               actions={actions}
               openReferencePicker={openReferencePicker}
             />
-          )}
+          ) : null}
         </EditorCanvas>
+        {!usePromptBox && !editor.boundsEditor && (
+          <PromptPanel
+            document={document}
+            inputRef={promptRef}
+            busy={editor.busy}
+            isSelectingRegion={gestures.isSelectingRegion}
+            promptCompletion={editor.promptCompletion}
+            actions={actions}
+            closePanels={closePanels}
+            openReferencePicker={openReferencePicker}
+          />
+        )}
         <Topbar
           openHelp={() => setPanel('help')}
           zoom={view.zoom * 100}

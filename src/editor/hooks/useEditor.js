@@ -17,6 +17,7 @@ import { downloadImages, readImageFiles } from '../services/files.js'
 import { applyImageBounds, cropChanged, sameBounds, uncroppedImage } from '../model/image-bounds.js'
 import { renderImageBounds } from '../services/image-bounds.js'
 import { appendReferences, changeReferenceWeight, referenceWeights, removeReference } from '../model/references.js'
+import { changeAura, promptType } from '../model/prompts.js'
 
 export function useEditor({ resetView, notify }) {
   const history = useDocumentHistory(initialDocument)
@@ -182,7 +183,13 @@ export function useEditor({ resetView, notify }) {
             references: document.references,
             referenceWeights: document.referenceWeights,
           }
-    const request = { ...primary, targetImages: selected }
+    const type = promptType(document)
+    const request = {
+      ...primary,
+      promptType: type,
+      aura: type === 'image' ? changeAura(document.aura) : undefined,
+      targetImages: selected,
+    }
     const results = await generation.run(request)
     if (!results) return
     const batchId = crypto.randomUUID()
@@ -288,6 +295,7 @@ export function useEditor({ resetView, notify }) {
       applySuggestion,
       finishPromptCompletion: () => setPromptCompletion(null),
       setPrompt,
+      setAura: (patch) => preview((current) => ({ aura: changeAura(current.aura, patch) })),
       generate,
       upload,
       downloadSelected,

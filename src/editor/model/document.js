@@ -1,5 +1,6 @@
 import { originalImage } from './assets.js'
 import { expansionBounds } from './layout.js'
+import { initialAura } from './prompts.js'
 
 export function initialDocument() {
   return {
@@ -11,6 +12,7 @@ export function initialDocument() {
     prompt: '',
     references: [],
     referenceWeights: [],
+    aura: initialAura(),
     region: null,
     results: [],
     selected: [],
@@ -28,7 +30,7 @@ export function deleteSelection(document) {
       selected: [],
       region: null,
       ...(document.selected.includes(document.imageId)
-        ? { image: null, cropSource: null, expansion: 0, prompt: '', references: [], referenceWeights: [] }
+        ? { image: null, cropSource: null, expansion: 0, prompt: '', references: [], referenceWeights: [], aura: initialAura() }
         : {}),
     }
   }

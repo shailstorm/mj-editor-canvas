@@ -1,4 +1,7 @@
 export { default as PromptCard } from '../../src/editor/components/PromptCard.jsx'
+export { default as PromptPanel } from '../../src/editor/components/PromptPanel.jsx'
+export { default as PromptReferences } from '../../src/editor/components/PromptReferences.jsx'
+export { default as Editor } from '../../src/editor/Editor.jsx'
 export { default as ReferenceImages } from '../../src/editor/components/ReferenceImages.jsx'
 export { default as EditorCanvas } from '../../src/editor/components/EditorCanvas.jsx'
 export { default as ProjectsDialog } from '../../src/editor/components/ProjectsDialog.jsx'
